@@ -1121,11 +1121,49 @@ input:checked + .switch::after {
 }
 
 .method-list article {
+  position: relative;
   min-height: 190px;
   padding: 28px;
-  display: block;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.42);
+  display: grid;
+  grid-template-rows: 26px 1fr;
+  gap: 28px;
+  overflow: hidden;
+  border: 1px solid rgba(17, 22, 37, 0.14);
+  border-radius: 16px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.28));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 18px 48px rgba(25, 39, 48, 0.07);
+  backdrop-filter: blur(18px) saturate(125%);
+  transition:
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    transform 220ms ease;
+}
+
+.method-list article::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 10% -8%, rgba(255, 255, 255, 0.78), transparent 38%),
+    linear-gradient(115deg, transparent 42%, rgba(255, 255, 255, 0.18) 50%, transparent 58%);
+  opacity: 0.72;
+}
+
+.method-list article > * {
+  position: relative;
+  z-index: 1;
+}
+
+.method-list article:hover {
+  border-color: rgba(52, 119, 143, 0.36);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 24px 56px rgba(25, 39, 48, 0.12);
+  transform: translateY(-4px);
 }
 
 .method-list {
@@ -1147,10 +1185,11 @@ input:checked + .switch::after {
 }
 
 .method-list h3 {
-  margin: 28px 0 9px;
+  margin: 0 0 9px;
   font-family: var(--serif);
-  font-size: 23px;
+  font-size: clamp(17px, 1.6vw, 22px);
   font-weight: 600;
+  line-height: 1.08;
 }
 
 .method-list p {
@@ -1167,8 +1206,27 @@ html[data-theme="dark"] .about {
 }
 
 html[data-theme="dark"] .method-list article {
-  border-color: rgba(201, 242, 255, 0.15);
-  background: rgba(201, 242, 255, 0.035);
+  border-color: rgba(201, 242, 255, 0.18);
+  background:
+    linear-gradient(145deg, rgba(201, 242, 255, 0.085), rgba(28, 30, 75, 0.2));
+  box-shadow:
+    inset 0 1px 0 rgba(224, 250, 255, 0.12),
+    0 24px 62px rgba(0, 0, 0, 0.22),
+    0 0 0 1px rgba(93, 224, 243, 0.025);
+}
+
+html[data-theme="dark"] .method-list article::before {
+  background:
+    radial-gradient(circle at 12% -8%, rgba(141, 223, 242, 0.2), transparent 40%),
+    linear-gradient(115deg, transparent 42%, rgba(201, 242, 255, 0.055) 50%, transparent 58%);
+}
+
+html[data-theme="dark"] .method-list article:hover {
+  border-color: rgba(201, 242, 255, 0.38);
+  box-shadow:
+    inset 0 1px 0 rgba(224, 250, 255, 0.2),
+    0 28px 70px rgba(0, 0, 0, 0.3),
+    0 0 32px rgba(93, 224, 243, 0.07);
 }
 
 html[data-theme="dark"] .method-list article > span {
@@ -1272,6 +1330,23 @@ footer > a:last-child {
 
 }
 
+@media (min-width: 761px) {
+  .method-list h3 {
+    white-space: nowrap;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 900px) {
+  .about {
+    padding-inline: 28px;
+  }
+
+  .method-list article {
+    padding: 22px;
+    gap: 24px;
+  }
+}
+
 @media (max-width: 760px) {
   .masthead {
     min-height: 56px;
@@ -1366,6 +1441,7 @@ footer > a:last-child {
 
   .method-list article {
     min-height: 0;
+    gap: 22px;
   }
 
   footer {
