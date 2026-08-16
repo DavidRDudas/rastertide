@@ -882,7 +882,10 @@ export function AsciiStudio() {
             <i />
             <i />
           </span>
-          RASTER<span>TIDE</span>
+          <span className="wordmark-copy">
+            <b>RASTER</b>
+            <em>TIDE</em>
+          </span>
         </a>
         <p className="masthead-note">Animated ASCII for images and video</p>
         <div className="masthead-actions">
@@ -1244,7 +1247,10 @@ export function AsciiStudio() {
             <i />
             <i />
           </span>
-          RASTER<span>TIDE</span>
+          <span className="wordmark-copy">
+            <b>RASTER</b>
+            <em>TIDE</em>
+          </span>
         </a>
         <p>Files stay on your device.</p>
         <a href="#studio">Back to studio ↑</a>

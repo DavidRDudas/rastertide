@@ -146,8 +146,20 @@ input:focus-visible {
   text-decoration: none;
 }
 
-.wordmark > span:not(.wordmark-mark) {
-  color: var(--copper);
+.wordmark-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.08em;
+}
+
+.wordmark-copy b,
+.wordmark-copy em {
+  font-style: normal;
+  font-weight: inherit;
+}
+
+.wordmark-copy em {
+  color: #34778f;
 }
 
 .wordmark-mark {
@@ -279,6 +291,10 @@ html[data-theme="dark"] .theme-toggle-track {
   background: var(--ice);
   box-shadow: 0 0 16px rgba(93, 224, 243, 0.38);
   transform: translateX(16px) rotate(180deg);
+}
+
+html[data-theme="dark"] .wordmark-copy em {
+  color: var(--ice);
 }
 
 html[data-theme="dark"] .theme-moon {
@@ -1178,7 +1194,7 @@ footer {
   color: white;
 }
 
-.footer-wordmark > span:not(.wordmark-mark) {
+.footer-wordmark .wordmark-copy em {
   color: var(--ice);
 }
 
