@@ -11,7 +11,7 @@ import {
 
 type SourceKind = "demo" | "image" | "video";
 type Palette = "ice" | "paper" | "amber" | "source";
-type Charset = "classic" | "technical" | "blocks" | "binary";
+type Charset = "signal" | "alphabet" | "dots" | "binary";
 
 type Settings = {
   columns: number;
@@ -21,29 +21,39 @@ type Settings = {
   palette: Palette;
   charset: Charset;
   invert: boolean;
+  motion: number;
 };
 
 const CHARSETS: Record<Charset, string> = {
-  classic: " .·,:;i1tfLCG08@",
-  technical: "  .:-=+*#%@",
-  blocks: "  ░▒▓█",
-  binary: " 01",
+  signal: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-+=<>/{}[]",
+  alphabet: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+  dots: ".·∙•",
+  binary: "01",
 };
 
 const INITIAL_SETTINGS: Settings = {
-  columns: 108,
-  contrast: 1.22,
-  brightness: 4,
+  columns: 220,
+  contrast: 1.48,
+  brightness: -8,
   fps: 24,
   palette: "ice",
-  charset: "classic",
+  charset: "signal",
   invert: false,
+  motion: 72,
 };
 
 const ACCEPTED_TYPES = "image/*,video/mp4,video/webm,video/quicktime";
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
+}
+
+function cellHash(column: number, row: number, phase: number) {
+  let value = Math.imul(column + 37, 374761393);
+  value = Math.imul(value ^ Math.imul(row + 71, 668265263), 1274126177);
+  value = Math.imul(value ^ Math.imul(phase + 101, 2246822519), 3266489917);
+  value ^= value >>> 15;
+  return value >>> 0;
 }
 
 function paletteColor(
@@ -75,9 +85,9 @@ function paletteColor(
     return `rgb(${value}, ${value}, ${Math.round(value * 0.96)})`;
   }
 
-  return `rgb(${Math.round(28 + level * 207)}, ${Math.round(
-    85 + level * 168,
-  )}, ${Math.round(135 + level * 120)})`;
+  const hue = 229 - level * 43;
+  const light = 19 + level * 63;
+  return `hsl(${hue} 100% ${light}%)`;
 }
 
 export function AsciiStudio() {
@@ -111,6 +121,7 @@ export function AsciiStudio() {
       source: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement,
       width: number,
       height: number,
+      time = performance.now(),
     ) => {
       const output = outputCanvasRef.current;
       const sample = sampleCanvasRef.current;
@@ -118,12 +129,12 @@ export function AsciiStudio() {
 
       const active = settingsRef.current;
       const columns = active.columns;
-      const cellWidth = 7;
-      const cellHeight = 11;
+      const cellWidth = 5.15;
+      const cellHeight = 7.4;
       const rows = clamp(
         Math.round(columns * (height / width) * (cellWidth / cellHeight)),
         12,
-        132,
+        190,
       );
       const sampleContext = sample.getContext("2d", {
         willReadFrequently: true,
@@ -137,22 +148,34 @@ export function AsciiStudio() {
       sampleContext.drawImage(source, 0, 0, columns, rows);
 
       const pixels = sampleContext.getImageData(0, 0, columns, rows).data;
-      const scale = Math.min(2, window.devicePixelRatio || 1);
+      const scale = Math.min(1.45, window.devicePixelRatio || 1);
       output.width = Math.round(columns * cellWidth * scale);
       output.height = Math.round(rows * cellHeight * scale);
       output.style.aspectRatio = `${columns * cellWidth} / ${rows * cellHeight}`;
 
       outputContext.setTransform(scale, 0, 0, scale, 0, 0);
-      outputContext.fillStyle = "#05062d";
+      outputContext.fillStyle = "#02012c";
       outputContext.fillRect(0, 0, columns * cellWidth, rows * cellHeight);
       outputContext.font =
-        '10px "SFMono-Regular", "Cascadia Mono", "Liberation Mono", monospace';
+        '700 7px "SFMono-Regular", "Cascadia Mono", "Liberation Mono", monospace';
       outputContext.textBaseline = "top";
-      outputContext.shadowBlur = active.palette === "ice" ? 3 : 0;
-      outputContext.shadowColor = "rgba(127, 225, 255, 0.3)";
+      outputContext.shadowBlur = active.palette === "ice" ? 4 : 0;
+      outputContext.shadowColor = "rgba(58, 211, 255, 0.48)";
 
       const charset = CHARSETS[active.charset];
       const lines: string[] = [];
+      const motionRate =
+        active.motion === 0 ? 0 : 1.2 + (active.motion / 100) * 10;
+      const phase = Math.floor((time / 1000) * motionRate);
+      const shimmer = active.motion / 100;
+
+      const sampleLuminance = (index: number) => {
+        return (
+          pixels[index] * 0.2126 +
+          pixels[index + 1] * 0.7152 +
+          pixels[index + 2] * 0.0722
+        );
+      };
 
       for (let row = 0; row < rows; row += 1) {
         let line = "";
@@ -162,19 +185,49 @@ export function AsciiStudio() {
           const green = pixels[pixelIndex + 1];
           const blue = pixels[pixelIndex + 2];
           const alpha = pixels[pixelIndex + 3] / 255;
-          let luminance = red * 0.2126 + green * 0.7152 + blue * 0.0722;
+          let luminance = sampleLuminance(pixelIndex);
+          const rightIndex =
+            column < columns - 1 ? pixelIndex + 4 : pixelIndex;
+          const lowerIndex =
+            row < rows - 1 ? pixelIndex + columns * 4 : pixelIndex;
+          const edge = Math.max(
+            Math.abs(luminance - sampleLuminance(rightIndex)),
+            Math.abs(luminance - sampleLuminance(lowerIndex)),
+          );
           luminance = (luminance - 128) * active.contrast + 128;
           luminance += active.brightness;
           if (active.invert) luminance = 255 - luminance;
-          luminance = clamp(luminance * alpha, 0, 255);
+          luminance = clamp((luminance * 0.88 + edge * 0.9) * alpha, 0, 255);
 
-          const characterIndex = Math.round(
-            (luminance / 255) * (charset.length - 1),
-          );
-          const character = charset[characterIndex];
+          const hash = cellHash(column, row, phase);
+          const staticHash = cellHash(column, row, 0);
+          const level = luminance / 255;
+          const drift = ((hash % 1000) / 1000 - 0.5) * 20 * shimmer;
+          luminance = clamp(luminance + drift, 0, 255);
+
+          let character = " ";
+          if (luminance > 22) {
+            if (luminance < 72) {
+              character = hash % 5 === 0 ? "." : " ";
+            } else if (luminance < 125) {
+              character = hash % 4 === 0 ? " " : ".·∙"[hash % 3];
+            } else if (active.charset === "dots") {
+              character = charset[hash % charset.length];
+            } else {
+              const dotChance = Math.max(5, Math.round(33 - level * 28));
+              character =
+                hash % 100 < dotChance
+                  ? ".·"[hash % 2]
+                  : charset[(hash + staticHash) % charset.length];
+            }
+          } else if (staticHash % 211 === 0) {
+            character = ".";
+            luminance = 34;
+          }
           line += character;
 
           if (character !== " ") {
+            outputContext.globalAlpha = clamp(0.16 + level * 1.08, 0.16, 1);
             outputContext.fillStyle = paletteColor(
               active.palette,
               luminance,
@@ -192,6 +245,7 @@ export function AsciiStudio() {
         lines.push(line);
       }
 
+      outputContext.globalAlpha = 1;
       lastAsciiRef.current = lines.join("\n");
     },
     [],
@@ -297,11 +351,16 @@ export function AsciiStudio() {
         if (sourceKind === "demo") {
           drawDemo(time);
           const demo = demoCanvasRef.current;
-          if (demo) renderAscii(demo, demo.width, demo.height);
+          if (demo) renderAscii(demo, demo.width, demo.height, time);
+        } else if (sourceKind === "image") {
+          const image = imageRef.current;
+          if (image?.complete && image.naturalWidth) {
+            renderAscii(image, image.naturalWidth, image.naturalHeight, time);
+          }
         } else if (sourceKind === "video") {
           const video = videoRef.current;
           if (video && video.readyState >= 2) {
-            renderAscii(video, video.videoWidth, video.videoHeight);
+            renderAscii(video, video.videoWidth, video.videoHeight, time);
           }
         }
       }
@@ -359,7 +418,7 @@ export function AsciiStudio() {
         image.onload = () => {
           setSourceKind("image");
           setSourceDimensions(`${image.naturalWidth} × ${image.naturalHeight}`);
-          setMessage("Image converted locally");
+          setMessage("Image alive — glyphs are drifting locally");
           renderAscii(image, image.naturalWidth, image.naturalHeight);
         };
         image.onerror = () => setMessage("This image could not be decoded");
@@ -516,15 +575,15 @@ export function AsciiStudio() {
 
       <section className="intro" aria-labelledby="page-title">
         <div>
-          <p className="eyebrow">Image + video → live type</p>
+          <p className="eyebrow">A living typographic field</p>
           <h1 id="page-title">
-            Turn any frame into a <em>field of characters.</em>
+            Any frame. <em>Alive in blue.</em>
           </h1>
         </div>
         <div className="intro-copy">
           <p>
-            Drop a photo or film. Glyphfield reads its light, rebuilds it in type,
-            and lets every frame keep moving.
+            Drop a photo or film. Its light becomes a restless field of letters,
+            symbols, and electric-blue dots.
           </p>
           <span>Private by design — files stay on this device.</span>
         </div>
@@ -550,6 +609,7 @@ export function AsciiStudio() {
             </div>
             <div className="stage-meta">
               <span>{settings.columns} cols</span>
+              <span>{settings.motion}% drift</span>
               <span>{sourceDimensions}</span>
             </div>
           </div>
@@ -616,11 +676,26 @@ export function AsciiStudio() {
             </span>
             <input
               type="range"
-              min="44"
-              max="180"
+              min="96"
+              max="280"
               value={settings.columns}
               onChange={(event) =>
                 updateSetting("columns", Number(event.target.value))
+              }
+            />
+          </label>
+
+          <label className="range-control">
+            <span>
+              Glyph motion <output>{settings.motion}% drift</output>
+            </span>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={settings.motion}
+              onChange={(event) =>
+                updateSetting("motion", Number(event.target.value))
               }
             />
           </label>
@@ -665,9 +740,9 @@ export function AsciiStudio() {
                   updateSetting("charset", event.target.value as Charset)
                 }
               >
-                <option value="classic">Classic</option>
-                <option value="technical">Technical</option>
-                <option value="blocks">Blocks</option>
+                <option value="signal">Signal mix</option>
+                <option value="alphabet">Alphabet</option>
+                <option value="dots">Dot field</option>
                 <option value="binary">Binary 01</option>
               </select>
             </label>

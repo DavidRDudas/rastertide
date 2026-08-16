@@ -32,7 +32,9 @@ test("server-renders the Glyphfield studio", async () => {
 
   const html = await response.text();
   assert.match(html, /<title>Glyphfield — Image \+ Video to ASCII<\/title>/i);
-  assert.match(html, /Turn any frame into a/);
+  assert.match(html, /Any frame/);
+  assert.match(html, /Alive in blue/);
+  assert.match(html, /Glyph motion/);
   assert.match(html, /Choose a file/);
   assert.match(html, /Private by design/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
