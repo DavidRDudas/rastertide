@@ -37,6 +37,9 @@ test("server-renders the Raster Tide studio", async () => {
   assert.match(html, /Glyph motion/);
   assert.match(html, /Add image or video/);
   assert.match(html, /Flow direction/);
+  assert.match(html, /Crimson red/);
+  assert.match(html, /Emerald green/);
+  assert.match(html, /Sunset spectrum/);
   assert.match(html, /Toggle light and dark mode/);
   assert.match(html, /raster-tide-theme/);
   assert.match(html, /Files stay on your device/);
