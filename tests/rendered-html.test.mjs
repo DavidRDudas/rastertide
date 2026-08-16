@@ -37,6 +37,8 @@ test("server-renders the Raster Tide studio", async () => {
   assert.match(html, /Glyph motion/);
   assert.match(html, /Add image or video/);
   assert.match(html, /Flow direction/);
+  assert.match(html, /Toggle light and dark mode/);
+  assert.match(html, /raster-tide-theme/);
   assert.match(html, /Files stay on your device/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
 });
@@ -49,6 +51,7 @@ test("keeps the conversion private and browser-native", async () => {
   assert.match(studio, /URL\.createObjectURL/);
   assert.match(studio, /canvas\.captureStream/);
   assert.match(studio, /navigator\.clipboard\.writeText/);
+  assert.match(studio, /startViewTransition/);
   assert.match(studio, /Files stay on your device/);
   assert.match(layout, /og\.png/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);

@@ -2,6 +2,21 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
 
+const themeBootScript = `
+  (() => {
+    try {
+      const saved = localStorage.getItem("raster-tide-theme");
+      const preferred = matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
+      document.documentElement.dataset.theme =
+        saved === "dark" || saved === "light" ? saved : preferred;
+    } catch {
+      document.documentElement.dataset.theme = "light";
+    }
+  })();
+`;
+
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
   const host =
@@ -50,7 +65,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+      </head>
       <body>{children}</body>
     </html>
   );

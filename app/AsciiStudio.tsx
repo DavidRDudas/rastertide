@@ -3,6 +3,7 @@
 import {
   ChangeEvent,
   DragEvent,
+  MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
@@ -14,6 +15,12 @@ type SourceKind = "demo" | "image" | "video";
 type Palette = "ice" | "paper" | "amber" | "source";
 type Charset = "signal" | "alphabet" | "dots" | "binary";
 type FlowDirection = "left" | "right" | "up" | "down";
+
+type ThemeTransitionDocument = Document & {
+  startViewTransition?: (update: () => void) => {
+    finished: Promise<void>;
+  };
+};
 
 type Settings = {
   columns: number;
@@ -821,6 +828,49 @@ export function AsciiStudio() {
     if (isPaused) togglePlayback();
   };
 
+  const toggleTheme = (event: ReactMouseEvent<HTMLButtonElement>) => {
+    const root = document.documentElement;
+    if (root.dataset.themeTransition) return;
+
+    const nextTheme = root.dataset.theme === "dark" ? "light" : "dark";
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const originX = bounds.left + bounds.width / 2;
+    const originY = bounds.top + bounds.height / 2;
+    const radius = Math.hypot(
+      Math.max(originX, window.innerWidth - originX),
+      Math.max(originY, window.innerHeight - originY),
+    );
+
+    root.style.setProperty("--theme-x", `${originX}px`);
+    root.style.setProperty("--theme-y", `${originY}px`);
+    root.style.setProperty("--theme-radius", `${radius}px`);
+
+    const applyTheme = () => {
+      root.dataset.theme = nextTheme;
+      try {
+        localStorage.setItem("raster-tide-theme", nextTheme);
+      } catch {
+        // The theme still works when storage is unavailable.
+      }
+    };
+
+    const transitionDocument = document as ThemeTransitionDocument;
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    if (!transitionDocument.startViewTransition || prefersReducedMotion) {
+      applyTheme();
+      return;
+    }
+
+    root.dataset.themeTransition = nextTheme;
+    const transition = transitionDocument.startViewTransition(applyTheme);
+    void transition.finished.finally(() => {
+      delete root.dataset.themeTransition;
+    });
+  };
+
   return (
     <main className="app-shell">
       <header className="masthead">
@@ -835,9 +885,23 @@ export function AsciiStudio() {
           RASTER<span>TIDE</span>
         </a>
         <p className="masthead-note">Animated ASCII for images and video</p>
-        <a className="jump-link" href="#about">
-          About <span aria-hidden="true">↘</span>
-        </a>
+        <div className="masthead-actions">
+          <button
+            className="theme-toggle"
+            type="button"
+            onClick={toggleTheme}
+            aria-label="Toggle light and dark mode"
+            title="Toggle color theme"
+          >
+            <span className="theme-toggle-track" aria-hidden="true">
+              <span className="theme-moon">◐</span>
+              <span className="theme-sun">☼</span>
+            </span>
+          </button>
+          <a className="jump-link" href="#about">
+            About <span aria-hidden="true">↘</span>
+          </a>
+        </div>
       </header>
 
       <section className="intro" aria-labelledby="page-title">
