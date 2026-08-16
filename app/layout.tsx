@@ -14,11 +14,16 @@ export async function generateMetadata(): Promise<Metadata> {
   const origin = `${protocol}://${host}`;
 
   return {
-    title: "Glyphfield — Animated ASCII Generator",
+    title: "Raster Tide — Animated ASCII Generator",
     description:
       "Convert images and video into animated ASCII art, then export a PNG or WEBM.",
+    icons: {
+      icon: { url: "/favicon.png", type: "image/png" },
+      shortcut: "/favicon.png",
+      apple: "/favicon.png",
+    },
     openGraph: {
-      title: "Glyphfield",
+      title: "Raster Tide",
       description: "Animated ASCII for images and video",
       type: "website",
       images: [
@@ -26,13 +31,13 @@ export async function generateMetadata(): Promise<Metadata> {
           url: `${origin}/og.png`,
           width: 1536,
           height: 915,
-          alt: "Glyphfield ASCII portrait",
+          alt: "Raster Tide animated ASCII portrait",
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      title: "Glyphfield",
+      title: "Raster Tide",
       description: "Animated ASCII for images and video",
       images: [`${origin}/og.png`],
     },

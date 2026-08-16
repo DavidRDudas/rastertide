@@ -25,13 +25,13 @@ async function render() {
   );
 }
 
-test("server-renders the Glyphfield studio", async () => {
+test("server-renders the Raster Tide studio", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>Glyphfield — Animated ASCII Generator<\/title>/i);
+  assert.match(html, /<title>Raster Tide — Animated ASCII Generator<\/title>/i);
   assert.match(html, /Images and video/);
   assert.match(html, /redrawn as type/);
   assert.match(html, /Glyph motion/);

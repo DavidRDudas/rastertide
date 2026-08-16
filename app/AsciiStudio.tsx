@@ -3,6 +3,7 @@
 import {
   ChangeEvent,
   DragEvent,
+  PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
   useRef,
@@ -140,6 +141,10 @@ function paletteColor(
 
 export function AsciiStudio() {
   const outputCanvasRef = useRef<HTMLCanvasElement>(null);
+  const magnifierRef = useRef<HTMLDivElement>(null);
+  const magnifierCanvasRef = useRef<HTMLCanvasElement>(null);
+  const magnifierPointerRef = useRef<{ x: number; y: number } | null>(null);
+  const drawMagnifierRef = useRef<() => void>(() => undefined);
   const sampleCanvasRef = useRef<HTMLCanvasElement>(null);
   const demoCanvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -159,6 +164,7 @@ export function AsciiStudio() {
   const [isPaused, setIsPaused] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [isMagnifying, setIsMagnifying] = useState(false);
   const [message, setMessage] = useState("Demo portrait");
 
   useEffect(() => {
@@ -372,9 +378,77 @@ export function AsciiStudio() {
 
       outputContext.globalAlpha = 1;
       lastAsciiRef.current = lines.join("\n");
+      drawMagnifierRef.current();
     },
     [],
   );
+
+  const drawMagnifier = useCallback(() => {
+    const pointer = magnifierPointerRef.current;
+    const output = outputCanvasRef.current;
+    const magnifier = magnifierRef.current;
+    const magnifierCanvas = magnifierCanvasRef.current;
+    const wrap = magnifier?.parentElement;
+    if (!pointer || !output || !magnifier || !magnifierCanvas || !wrap) return;
+
+    const outputBounds = output.getBoundingClientRect();
+    const wrapBounds = wrap.getBoundingClientRect();
+    if (!outputBounds.width || !outputBounds.height) return;
+
+    const pointerX = outputBounds.left + pointer.x * outputBounds.width;
+    const pointerY = outputBounds.top + pointer.y * outputBounds.height;
+    magnifier.style.left = `${pointerX - wrapBounds.left}px`;
+    magnifier.style.top = `${pointerY - wrapBounds.top}px`;
+
+    const pixelRatio = Math.min(2, window.devicePixelRatio || 1);
+    const lensCssSize = 180;
+    const lensPixelSize = Math.round(lensCssSize * pixelRatio);
+    if (
+      magnifierCanvas.width !== lensPixelSize ||
+      magnifierCanvas.height !== lensPixelSize
+    ) {
+      magnifierCanvas.width = lensPixelSize;
+      magnifierCanvas.height = lensPixelSize;
+    }
+
+    const context = magnifierCanvas.getContext("2d");
+    if (!context) return;
+    context.imageSmoothingEnabled = false;
+    context.clearRect(0, 0, lensPixelSize, lensPixelSize);
+
+    const sourceX = pointer.x * output.width;
+    const sourceY = pointer.y * output.height;
+    const zoom = 3;
+    const sourceWidth = Math.min(
+      output.width,
+      (lensCssSize / zoom) * (output.width / outputBounds.width),
+    );
+    const sourceHeight = Math.min(
+      output.height,
+      (lensCssSize / zoom) * (output.height / outputBounds.height),
+    );
+    const cropX = clamp(sourceX - sourceWidth / 2, 0, output.width - sourceWidth);
+    const cropY = clamp(sourceY - sourceHeight / 2, 0, output.height - sourceHeight);
+
+    context.drawImage(
+      output,
+      cropX,
+      cropY,
+      sourceWidth,
+      sourceHeight,
+      0,
+      0,
+      lensPixelSize,
+      lensPixelSize,
+    );
+  }, []);
+
+  useEffect(() => {
+    drawMagnifierRef.current = drawMagnifier;
+    return () => {
+      drawMagnifierRef.current = () => undefined;
+    };
+  }, [drawMagnifier]);
 
   const drawDemo = useCallback((time: number) => {
     const canvas = demoCanvasRef.current;
@@ -609,6 +683,33 @@ export function AsciiStudio() {
     loadFile(event.dataTransfer.files?.[0]);
   };
 
+  const handleMagnifierMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "touch") return;
+
+    const output = outputCanvasRef.current;
+    if (!output) return;
+
+    const outputBounds = output.getBoundingClientRect();
+    const insideCanvas =
+      event.clientX >= outputBounds.left &&
+      event.clientX <= outputBounds.right &&
+      event.clientY >= outputBounds.top &&
+      event.clientY <= outputBounds.bottom;
+
+    if (!insideCanvas) {
+      magnifierPointerRef.current = null;
+      setIsMagnifying(false);
+      return;
+    }
+
+    magnifierPointerRef.current = {
+      x: (event.clientX - outputBounds.left) / outputBounds.width,
+      y: (event.clientY - outputBounds.top) / outputBounds.height,
+    };
+    drawMagnifierRef.current();
+    setIsMagnifying(true);
+  };
+
   const updateSetting = <Key extends keyof Settings>(
     key: Key,
     value: Settings[Key],
@@ -668,7 +769,7 @@ export function AsciiStudio() {
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = "glyphfield-ascii.png";
+      anchor.download = "raster-tide-ascii.png";
       anchor.click();
       URL.revokeObjectURL(url);
       setMessage("PNG exported");
@@ -706,7 +807,7 @@ export function AsciiStudio() {
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = "glyphfield-ascii.webm";
+      anchor.download = "raster-tide-ascii.webm";
       anchor.click();
       URL.revokeObjectURL(url);
       setIsRecording(false);
@@ -723,7 +824,7 @@ export function AsciiStudio() {
   return (
     <main className="app-shell">
       <header className="masthead">
-        <a className="wordmark" href="#studio" aria-label="Glyphfield home">
+        <a className="wordmark" href="#studio" aria-label="Raster Tide home">
           <span className="wordmark-mark" aria-hidden="true">
             <i />
             <i />
@@ -731,7 +832,7 @@ export function AsciiStudio() {
             <i />
             <i />
           </span>
-          GLYPH<span>FIELD</span>
+          RASTER<span>TIDE</span>
         </a>
         <p className="masthead-note">Animated ASCII for images and video</p>
         <a className="jump-link" href="#about">
@@ -788,8 +889,23 @@ export function AsciiStudio() {
             </div>
           </div>
 
-          <div className="canvas-wrap">
+          <div
+            className="canvas-wrap"
+            onPointerMove={handleMagnifierMove}
+            onPointerLeave={() => {
+              magnifierPointerRef.current = null;
+              setIsMagnifying(false);
+            }}
+          >
             <canvas ref={outputCanvasRef} aria-label="Generated ASCII artwork" />
+            <div
+              ref={magnifierRef}
+              className={`magnifier-lens ${isMagnifying ? "is-visible" : ""}`}
+              aria-hidden="true"
+            >
+              <canvas ref={magnifierCanvasRef} />
+              <span>3×</span>
+            </div>
             {isDragging && (
               <div className="drop-overlay">
                 <strong>Drop to open</strong>
@@ -1057,7 +1173,14 @@ export function AsciiStudio() {
 
       <footer>
         <a className="wordmark footer-wordmark" href="#studio">
-          GLYPH<span>FIELD</span>
+          <span className="wordmark-mark" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+            <i />
+            <i />
+          </span>
+          RASTER<span>TIDE</span>
         </a>
         <p>Files stay on your device.</p>
         <a href="#studio">Back to studio ↑</a>
