@@ -12,6 +12,7 @@ import {
 type SourceKind = "demo" | "image" | "video";
 type Palette = "ice" | "paper" | "amber" | "source";
 type Charset = "signal" | "alphabet" | "dots" | "binary";
+type FlowDirection = "left" | "right" | "up" | "down";
 
 type Settings = {
   columns: number;
@@ -23,6 +24,7 @@ type Settings = {
   invert: boolean;
   motion: number;
   zoom: number;
+  direction: FlowDirection;
 };
 
 const CHARSETS: Record<Charset, string> = {
@@ -47,6 +49,13 @@ const ICE_STOPS = [
   [1, [255, 255, 255]],
 ] as const;
 
+const FLOW_LABELS: Record<FlowDirection, string> = {
+  left: "Left ←",
+  right: "Right →",
+  up: "Up ↑",
+  down: "Down ↓",
+};
+
 const INITIAL_SETTINGS: Settings = {
   columns: 144,
   contrast: 1.08,
@@ -57,12 +66,17 @@ const INITIAL_SETTINGS: Settings = {
   invert: false,
   motion: 72,
   zoom: 1.42,
+  direction: "left",
 };
 
 const ACCEPTED_TYPES = "image/*,video/mp4,video/webm,video/quicktime";
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
+}
+
+function wrap(value: number, length: number) {
+  return ((value % length) + length) % length;
 }
 
 function cellHash(column: number, row: number, phase: number) {
@@ -212,6 +226,16 @@ export function AsciiStudio() {
       const lines: string[] = [];
       const timeSeconds = time / 1000;
       const tick = Math.floor((time / 1000) * active.fps);
+      const direction = active.direction ?? INITIAL_SETTINGS.direction;
+      const verticalVelocity =
+        active.motion === 0 ? 0 : 0.5 * (active.motion / 72);
+      const verticalDistance = Math.floor(tick * verticalVelocity);
+      const verticalShift =
+        direction === "up"
+          ? verticalDistance
+          : direction === "down"
+            ? -verticalDistance
+            : 0;
 
       const sampleLuminance = (index: number) => {
         return (
@@ -228,7 +252,13 @@ export function AsciiStudio() {
           active.motion === 0
             ? 0
             : (0.3 + rowSeed * 0.4) * (active.motion / 72);
-        const rowShift = Math.floor(tick * rowVelocity);
+        const rowDistance = Math.floor(tick * rowVelocity);
+        const horizontalShift =
+          direction === "left"
+            ? rowDistance
+            : direction === "right"
+              ? -rowDistance
+              : 0;
         for (let column = 0; column < columns; column += 1) {
           const pixelIndex = (row * columns + column) * 4;
           const red = pixels[pixelIndex];
@@ -252,7 +282,9 @@ export function AsciiStudio() {
 
           const hash = cellHash(column, row, tick);
           const staticHash = cellHash(column, row, 0);
-          const streamHash = cellHash(column + rowShift, row, 0);
+          const streamColumn = column + horizontalShift;
+          const streamRow = row + verticalShift;
+          const streamHash = cellHash(streamColumn, streamRow, 0);
           const level = luminance / 255;
 
           let character = " ";
@@ -266,8 +298,7 @@ export function AsciiStudio() {
               character = charset[streamHash % charset.length];
             } else if (active.charset === "signal") {
               const tapeIndex =
-                (column + row * 19 + rowShift + SIGNAL_TAPE.length * 4) %
-                SIGNAL_TAPE.length;
+                wrap(streamColumn + streamRow * 19, SIGNAL_TAPE.length);
               character = SIGNAL_TAPE[tapeIndex];
               const occupancy = 84 + level * 14;
               if (streamHash % 100 > occupancy) {
@@ -295,7 +326,7 @@ export function AsciiStudio() {
 
           if (character !== " ") {
             const isDot = ".·∙•".includes(character);
-            const pulseSeed = (staticHash % 1000) / 1000;
+            const pulseSeed = (streamHash % 1000) / 1000;
             const pulseRate = (2.3 + pulseSeed * 3.1) * (active.motion / 72);
             const dotPulse = isDot
               ? 0.35 +
@@ -737,7 +768,9 @@ export function AsciiStudio() {
             </div>
             <div className="stage-meta">
               <span>{settings.columns} cols</span>
-              <span>{settings.motion}% drift</span>
+              <span>
+                {settings.motion}% {FLOW_LABELS[settings.direction ?? "left"]}
+              </span>
               <span>{sourceDimensions}</span>
             </div>
           </div>
@@ -826,6 +859,26 @@ export function AsciiStudio() {
                 updateSetting("motion", Number(event.target.value))
               }
             />
+          </label>
+
+          <label className="flow-control">
+            <span>Flow direction</span>
+            <select
+              aria-label="Flow direction"
+              value={settings.direction ?? INITIAL_SETTINGS.direction}
+              onChange={(event) =>
+                updateSetting(
+                  "direction",
+                  event.target.value as FlowDirection,
+                )
+              }
+            >
+              {(Object.keys(FLOW_LABELS) as FlowDirection[]).map((value) => (
+                <option key={value} value={value}>
+                  {FLOW_LABELS[value]}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label className="range-control">
