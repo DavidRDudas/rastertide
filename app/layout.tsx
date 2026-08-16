@@ -14,12 +14,12 @@ export async function generateMetadata(): Promise<Metadata> {
   const origin = `${protocol}://${host}`;
 
   return {
-    title: "Glyphfield — Image + Video to ASCII",
+    title: "Glyphfield — Animated ASCII Generator",
     description:
-      "Turn any image or video into luminous, animated ASCII art directly in your browser.",
+      "Convert images and video into animated ASCII art, then export a PNG or WEBM.",
     openGraph: {
       title: "Glyphfield",
-      description: "Image + video → ASCII",
+      description: "Animated ASCII for images and video",
       type: "website",
       images: [
         {
@@ -33,7 +33,7 @@ export async function generateMetadata(): Promise<Metadata> {
     twitter: {
       card: "summary_large_image",
       title: "Glyphfield",
-      description: "Image + video → ASCII",
+      description: "Animated ASCII for images and video",
       images: [`${origin}/og.png`],
     },
   };

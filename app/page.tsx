@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { AsciiStudio } from "./AsciiStudio";
 
 export const metadata: Metadata = {
-  title: "Glyphfield — Image + Video to ASCII",
+  title: "Glyphfield — Animated ASCII Generator",
   description:
-    "Turn any image or video into luminous, animated ASCII art directly in your browser.",
+    "Convert images and video into animated ASCII art, then export a PNG or WEBM.",
 };
 
 export default function Home() {

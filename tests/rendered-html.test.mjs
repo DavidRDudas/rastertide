@@ -31,12 +31,13 @@ test("server-renders the Glyphfield studio", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>Glyphfield — Image \+ Video to ASCII<\/title>/i);
-  assert.match(html, /Any frame/);
-  assert.match(html, /Alive in blue/);
+  assert.match(html, /<title>Glyphfield — Animated ASCII Generator<\/title>/i);
+  assert.match(html, /Images and video/);
+  assert.match(html, /redrawn as type/);
   assert.match(html, /Glyph motion/);
-  assert.match(html, /Choose a file/);
-  assert.match(html, /Private by design/);
+  assert.match(html, /Add image or video/);
+  assert.match(html, /Flow direction/);
+  assert.match(html, /Files stay on your device/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
 });
 
@@ -48,7 +49,7 @@ test("keeps the conversion private and browser-native", async () => {
   assert.match(studio, /URL\.createObjectURL/);
   assert.match(studio, /canvas\.captureStream/);
   assert.match(studio, /navigator\.clipboard\.writeText/);
-  assert.match(studio, /Nothing is uploaded/);
+  assert.match(studio, /Files stay on your device/);
   assert.match(layout, /og\.png/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
 });

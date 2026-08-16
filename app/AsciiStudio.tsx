@@ -50,10 +50,17 @@ const ICE_STOPS = [
 ] as const;
 
 const FLOW_LABELS: Record<FlowDirection, string> = {
-  left: "Left ←",
-  right: "Right →",
-  up: "Up ↑",
-  down: "Down ↓",
+  left: "Left",
+  right: "Right",
+  up: "Up",
+  down: "Down",
+};
+
+const FLOW_ARROWS: Record<FlowDirection, string> = {
+  left: "←",
+  right: "→",
+  up: "↑",
+  down: "↓",
 };
 
 const INITIAL_SETTINGS: Settings = {
@@ -152,7 +159,7 @@ export function AsciiStudio() {
   const [isPaused, setIsPaused] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [message, setMessage] = useState("Portrait signal running");
+  const [message, setMessage] = useState("Demo portrait");
 
   useEffect(() => {
     settingsRef.current = settings;
@@ -466,7 +473,7 @@ export function AsciiStudio() {
       if (sourceKindRef.current !== "demo") return;
       setSourceName("Editorial portrait");
       setSourceDimensions(`${image.naturalWidth} × ${image.naturalHeight}`);
-      setMessage("Portrait signal running");
+      setMessage("Demo portrait");
       renderAscii(image, image.naturalWidth, image.naturalHeight);
     };
 
@@ -553,7 +560,7 @@ export function AsciiStudio() {
       const isImage = file.type.startsWith("image/");
       const isVideo = file.type.startsWith("video/");
       if (!isImage && !isVideo) {
-        setMessage("Choose an image, MP4, WebM, or MOV file");
+        setMessage("Choose a JPG, PNG, GIF, MP4, WebM, or MOV file");
         return;
       }
 
@@ -569,7 +576,7 @@ export function AsciiStudio() {
         image.onload = () => {
           setSourceKind("image");
           setSourceDimensions(`${image.naturalWidth} × ${image.naturalHeight}`);
-          setMessage("Image alive — glyphs are drifting locally");
+          setMessage("Image ready");
           renderAscii(image, image.naturalWidth, image.naturalHeight);
         };
         image.onerror = () => setMessage("This image could not be decoded");
@@ -580,7 +587,7 @@ export function AsciiStudio() {
         video.onloadedmetadata = () => {
           setSourceKind("video");
           setSourceDimensions(`${video.videoWidth} × ${video.videoHeight}`);
-          setMessage("Video playing — press Record WEBM to export");
+          setMessage("Video playing");
           void video.play().catch(() => setMessage("Press play to start the video"));
         };
         video.onerror = () => setMessage("This video codec is not supported here");
@@ -619,7 +626,7 @@ export function AsciiStudio() {
         else void video.play();
       }
     }
-    setMessage(nextPaused ? "Output paused" : "Output playing");
+    setMessage(nextPaused ? "Preview paused" : "Preview playing");
   };
 
   const resetDemo = () => {
@@ -641,7 +648,7 @@ export function AsciiStudio() {
       image.src = "/demo-portrait.png";
     }
     setIsPaused(false);
-    setMessage("Portrait signal running");
+    setMessage("Demo portrait");
   };
 
   const copyAscii = async () => {
@@ -709,7 +716,7 @@ export function AsciiStudio() {
     recorderRef.current = recorder;
     recorder.start(500);
     setIsRecording(true);
-    setMessage("Recording ASCII output… press again to finish");
+    setMessage("Recording… press again to finish");
     if (isPaused) togglePlayback();
   };
 
@@ -726,25 +733,31 @@ export function AsciiStudio() {
           </span>
           GLYPH<span>FIELD</span>
         </a>
-        <p className="masthead-note">A browser-native ASCII laboratory</p>
+        <p className="masthead-note">Animated ASCII for images and video</p>
         <a className="jump-link" href="#about">
-          How it works <span aria-hidden="true">↘</span>
+          About <span aria-hidden="true">↘</span>
         </a>
       </header>
 
       <section className="intro" aria-labelledby="page-title">
         <div>
-          <p className="eyebrow">A living typographic field</p>
+          <p className="eyebrow">Animated ASCII generator</p>
           <h1 id="page-title">
-            Any frame. <em>Alive in blue.</em>
+            Images and video, <em>redrawn as type.</em>
           </h1>
         </div>
         <div className="intro-copy">
           <p>
-            Drop a photo or film. Its light becomes a restless field of letters,
-            symbols, and electric-blue dots.
+            Add a file, then adjust the grid, color, speed, and direction. Save a
+            still or record the animation when it looks right.
           </p>
-          <span>Private by design — files stay on this device.</span>
+          <span>Files stay on your device.</span>
+          <div className="intro-actions">
+            <button type="button" onClick={() => fileInputRef.current?.click()}>
+              Add a file
+            </button>
+            <a href="#studio">Try the demo <span aria-hidden="true">↓</span></a>
+          </div>
         </div>
       </section>
 
@@ -764,12 +777,12 @@ export function AsciiStudio() {
           <div className="stage-bar">
             <div>
               <span className={`live-dot ${isPaused ? "paused" : ""}`} />
-              {isPaused ? "Paused" : "Live output"}
+              {isPaused ? "Paused" : "Preview"}
             </div>
             <div className="stage-meta">
               <span>{settings.columns} cols</span>
               <span>
-                {settings.motion}% {FLOW_LABELS[settings.direction ?? "left"]}
+                {settings.motion}% · {FLOW_LABELS[settings.direction ?? "left"]}
               </span>
               <span>{sourceDimensions}</span>
             </div>
@@ -779,7 +792,7 @@ export function AsciiStudio() {
             <canvas ref={outputCanvasRef} aria-label="Generated ASCII artwork" />
             {isDragging && (
               <div className="drop-overlay">
-                <strong>Release the frame</strong>
+                <strong>Drop to open</strong>
                 <span>Image or video</span>
               </div>
             )}
@@ -787,7 +800,7 @@ export function AsciiStudio() {
 
           <div className="stage-caption">
             <div>
-              <span>Source</span>
+              <span>File</span>
               <strong title={sourceName}>{sourceName}</strong>
             </div>
             <p aria-live="polite">{message}</p>
@@ -798,10 +811,10 @@ export function AsciiStudio() {
           <div className="control-heading">
             <div>
               <span>01</span>
-              <h2>Source</h2>
+              <h2>Media</h2>
             </div>
             <button className="text-button" type="button" onClick={resetDemo}>
-              Reset demo
+              Reset example
             </button>
           </div>
 
@@ -812,8 +825,8 @@ export function AsciiStudio() {
           >
             <span className="upload-plus" aria-hidden="true">+</span>
             <span>
-              <strong>Choose a file</strong>
-              <small>JPG, PNG, GIF, MP4, WebM or MOV</small>
+              <strong>Add image or video</strong>
+              <small>Drop here or choose a file</small>
             </span>
           </button>
           <input
@@ -827,7 +840,7 @@ export function AsciiStudio() {
           <div className="control-heading second-heading">
             <div>
               <span>02</span>
-              <h2>Translate</h2>
+              <h2>Style</h2>
             </div>
           </div>
 
@@ -861,25 +874,27 @@ export function AsciiStudio() {
             />
           </label>
 
-          <label className="flow-control">
-            <span>Flow direction</span>
-            <select
-              aria-label="Flow direction"
-              value={settings.direction ?? INITIAL_SETTINGS.direction}
-              onChange={(event) =>
-                updateSetting(
-                  "direction",
-                  event.target.value as FlowDirection,
-                )
-              }
-            >
-              {(Object.keys(FLOW_LABELS) as FlowDirection[]).map((value) => (
-                <option key={value} value={value}>
-                  {FLOW_LABELS[value]}
-                </option>
-              ))}
-            </select>
-          </label>
+          <fieldset className="direction-control">
+            <legend>Flow direction</legend>
+            <div>
+              {(Object.keys(FLOW_LABELS) as FlowDirection[]).map((value) => {
+                const isActive =
+                  (settings.direction ?? INITIAL_SETTINGS.direction) === value;
+                return (
+                  <button
+                    className={isActive ? "active" : ""}
+                    type="button"
+                    key={value}
+                    aria-pressed={isActive}
+                    onClick={() => updateSetting("direction", value)}
+                  >
+                    <span aria-hidden="true">{FLOW_ARROWS[value]}</span>
+                    {FLOW_LABELS[value]}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
 
           <label className="range-control">
             <span>
@@ -937,7 +952,7 @@ export function AsciiStudio() {
                   updateSetting("charset", event.target.value as Charset)
                 }
               >
-                <option value="signal">Signal mix</option>
+                <option value="signal">Letters + dots</option>
                 <option value="alphabet">Alphabet</option>
                 <option value="dots">Dot field</option>
                 <option value="binary">Binary 01</option>
@@ -1011,29 +1026,29 @@ export function AsciiStudio() {
       </section>
 
       <section className="about" id="about">
-        <p className="eyebrow">Light, sampled into language</p>
+        <p className="eyebrow">How it works</p>
         <div className="about-grid">
-          <h2>Every pixel has a brightness. Every brightness can become a glyph.</h2>
+          <h2>A frame becomes a grid. You decide how it moves.</h2>
           <div className="method-list">
             <article>
               <span>1</span>
               <div>
-                <h3>Sample</h3>
-                <p>The source frame is scaled to your chosen character grid.</p>
+                <h3>Set the grid</h3>
+                <p>Choose how much detail the character grid should hold.</p>
               </div>
             </article>
             <article>
               <span>2</span>
               <div>
-                <h3>Map</h3>
-                <p>Each cell’s luminance selects a character from light to dense.</p>
+                <h3>Shape the look</h3>
+                <p>Adjust exposure, contrast, color, and the character set.</p>
               </div>
             </article>
             <article>
               <span>3</span>
               <div>
-                <h3>Render</h3>
-                <p>The type is redrawn on every video frame, ready to save or record.</p>
+                <h3>Choose the motion</h3>
+                <p>Set the speed and send the type left, right, up, or down.</p>
               </div>
             </article>
           </div>
@@ -1044,7 +1059,7 @@ export function AsciiStudio() {
         <a className="wordmark footer-wordmark" href="#studio">
           GLYPH<span>FIELD</span>
         </a>
-        <p>Your media stays in your browser. Nothing is uploaded.</p>
+        <p>Files stay on your device.</p>
         <a href="#studio">Back to studio ↑</a>
       </footer>
 
