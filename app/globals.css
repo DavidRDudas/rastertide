@@ -5,7 +5,7 @@
   --muted: #536673;
   --powder: #dceef2;
   --powder-deep: #c9e1e7;
-  --navy: #05062d;
+  --navy: #030023;
   --navy-soft: #0d1041;
   --ice: #c9f2ff;
   --copper: #bd7548;
@@ -265,7 +265,7 @@ input:focus-visible {
   padding: 0;
   background:
     radial-gradient(circle at 50% 48%, rgba(32, 48, 133, 0.2), transparent 52%),
-    #02012c;
+    #030023;
 }
 
 .stage.is-dragging {
@@ -338,22 +338,7 @@ input:focus-visible {
   display: grid;
   place-items: center;
   overflow: hidden;
-  background: #02012c;
-}
-
-.canvas-wrap::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(68, 141, 255, 0.022) 0,
-    rgba(68, 141, 255, 0.022) 1px,
-    transparent 1px,
-    transparent 4px
-  );
-  mix-blend-mode: screen;
+  background: #030023;
 }
 
 .canvas-wrap canvas {
@@ -362,7 +347,7 @@ input:focus-visible {
   max-height: calc(100svh - 171px);
   display: block;
   object-fit: contain;
-  filter: saturate(1.16) contrast(1.04);
+  filter: saturate(1.08) contrast(1.02);
 }
 
 .drop-overlay {

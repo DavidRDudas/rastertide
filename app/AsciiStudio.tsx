@@ -22,6 +22,7 @@ type Settings = {
   charset: Charset;
   invert: boolean;
   motion: number;
+  zoom: number;
 };
 
 const CHARSETS: Record<Charset, string> = {
@@ -31,15 +32,31 @@ const CHARSETS: Record<Charset, string> = {
   binary: "01",
 };
 
+const SIGNAL_TAPE =
+  " XIRTAM ROSNET ECENQUES MODNAR ETALUCLAC REZIMITPO NOUTER CENEUVIS " +
+  "HPARGREPY SREYAL NOTICIDERP FNI TIMIL NESHNOIS EDOM RUTER LE DOM " +
+  "MYSA EIRR TAOLF SSOL JSEDOO ETATS LLUN EDOM RRA HPOF LEDOM NRETAP ";
+
+const ICE_STOPS = [
+  [0, [3, 0, 35]],
+  [0.12, [20, 16, 59]],
+  [0.3, [53, 108, 151]],
+  [0.48, [65, 162, 198]],
+  [0.68, [93, 224, 243]],
+  [0.93, [255, 255, 255]],
+  [1, [255, 255, 255]],
+] as const;
+
 const INITIAL_SETTINGS: Settings = {
-  columns: 220,
-  contrast: 1.48,
-  brightness: -8,
+  columns: 144,
+  contrast: 1.08,
+  brightness: 8,
   fps: 24,
   palette: "ice",
   charset: "signal",
   invert: false,
   motion: 72,
+  zoom: 1.42,
 };
 
 const ACCEPTED_TYPES = "image/*,video/mp4,video/webm,video/quicktime";
@@ -85,9 +102,19 @@ function paletteColor(
     return `rgb(${value}, ${value}, ${Math.round(value * 0.96)})`;
   }
 
-  const hue = 229 - level * 43;
-  const light = 19 + level * 63;
-  return `hsl(${hue} 100% ${light}%)`;
+  const upperIndex = ICE_STOPS.findIndex(([stop]) => level <= stop);
+  const endIndex = upperIndex === -1 ? ICE_STOPS.length - 1 : upperIndex;
+  const startIndex = Math.max(0, endIndex - 1);
+  const [startStop, startColor] = ICE_STOPS[startIndex];
+  const [endStop, endColor] = ICE_STOPS[endIndex];
+  const amount =
+    startStop === endStop ? 0 : (level - startStop) / (endStop - startStop);
+  const mix = (channel: number) =>
+    Math.round(
+      startColor[channel] +
+        (endColor[channel] - startColor[channel]) * clamp(amount, 0, 1),
+    );
+  return `rgb(${mix(0)}, ${mix(1)}, ${mix(2)})`;
 }
 
 export function AsciiStudio() {
@@ -102,19 +129,24 @@ export function AsciiStudio() {
   const recordedChunksRef = useRef<Blob[]>([]);
   const lastAsciiRef = useRef("");
   const settingsRef = useRef<Settings>(INITIAL_SETTINGS);
+  const sourceKindRef = useRef<SourceKind>("demo");
 
   const [settings, setSettings] = useState(INITIAL_SETTINGS);
   const [sourceKind, setSourceKind] = useState<SourceKind>("demo");
-  const [sourceName, setSourceName] = useState("Procedural signal");
-  const [sourceDimensions, setSourceDimensions] = useState("640 × 420");
+  const [sourceName, setSourceName] = useState("Editorial portrait");
+  const [sourceDimensions, setSourceDimensions] = useState("1792 × 1024");
   const [isPaused, setIsPaused] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [message, setMessage] = useState("Live demo running");
+  const [message, setMessage] = useState("Portrait signal running");
 
   useEffect(() => {
     settingsRef.current = settings;
   }, [settings]);
+
+  useEffect(() => {
+    sourceKindRef.current = sourceKind;
+  }, [sourceKind]);
 
   const renderAscii = useCallback(
     (
@@ -129,10 +161,10 @@ export function AsciiStudio() {
 
       const active = settingsRef.current;
       const columns = active.columns;
-      const cellWidth = 5.15;
-      const cellHeight = 7.4;
+      const cellWidth = 8;
+      const cellHeight = 8;
       const rows = clamp(
-        Math.round(columns * (height / width) * (cellWidth / cellHeight)),
+        Math.round(columns * (height / width)),
         12,
         190,
       );
@@ -145,29 +177,41 @@ export function AsciiStudio() {
       sample.width = columns;
       sample.height = rows;
       sampleContext.clearRect(0, 0, columns, rows);
-      sampleContext.drawImage(source, 0, 0, columns, rows);
+      const zoom = active.zoom ?? INITIAL_SETTINGS.zoom;
+      const cropWidth = width / zoom;
+      const cropHeight = height / zoom;
+      sampleContext.drawImage(
+        source,
+        (width - cropWidth) / 2,
+        (height - cropHeight) / 2,
+        cropWidth,
+        cropHeight,
+        0,
+        0,
+        columns,
+        rows,
+      );
 
       const pixels = sampleContext.getImageData(0, 0, columns, rows).data;
-      const scale = Math.min(1.45, window.devicePixelRatio || 1);
+      const scale = Math.min(2, window.devicePixelRatio || 1);
       output.width = Math.round(columns * cellWidth * scale);
       output.height = Math.round(rows * cellHeight * scale);
       output.style.aspectRatio = `${columns * cellWidth} / ${rows * cellHeight}`;
 
       outputContext.setTransform(scale, 0, 0, scale, 0, 0);
-      outputContext.fillStyle = "#02012c";
+      outputContext.imageSmoothingEnabled = false;
+      outputContext.fillStyle = "#030023";
       outputContext.fillRect(0, 0, columns * cellWidth, rows * cellHeight);
       outputContext.font =
-        '700 7px "SFMono-Regular", "Cascadia Mono", "Liberation Mono", monospace';
+        '800 7px "SFMono-Regular", "Cascadia Mono", "Liberation Mono", monospace';
       outputContext.textBaseline = "top";
-      outputContext.shadowBlur = active.palette === "ice" ? 4 : 0;
-      outputContext.shadowColor = "rgba(58, 211, 255, 0.48)";
+      outputContext.shadowBlur = 0;
+      outputContext.shadowColor = "rgba(93, 224, 243, 0.52)";
 
       const charset = CHARSETS[active.charset];
       const lines: string[] = [];
-      const motionRate =
-        active.motion === 0 ? 0 : 1.2 + (active.motion / 100) * 10;
-      const phase = Math.floor((time / 1000) * motionRate);
-      const shimmer = active.motion / 100;
+      const timeSeconds = time / 1000;
+      const tick = Math.floor((time / 1000) * active.fps);
 
       const sampleLuminance = (index: number) => {
         return (
@@ -179,6 +223,12 @@ export function AsciiStudio() {
 
       for (let row = 0; row < rows; row += 1) {
         let line = "";
+        const rowSeed = (cellHash(0, row, 0) % 1000) / 1000;
+        const rowVelocity =
+          active.motion === 0
+            ? 0
+            : (0.3 + rowSeed * 0.4) * (active.motion / 72);
+        const rowShift = Math.floor(tick * rowVelocity);
         for (let column = 0; column < columns; column += 1) {
           const pixelIndex = (row * columns + column) * 4;
           const red = pixels[pixelIndex];
@@ -197,22 +247,39 @@ export function AsciiStudio() {
           luminance = (luminance - 128) * active.contrast + 128;
           luminance += active.brightness;
           if (active.invert) luminance = 255 - luminance;
-          luminance = clamp((luminance * 0.88 + edge * 0.9) * alpha, 0, 255);
+          luminance = clamp((luminance + edge * 0.12) * alpha, 0, 255);
+          luminance = 255 * Math.pow(luminance / 255, 0.5);
 
-          const hash = cellHash(column, row, phase);
+          const hash = cellHash(column, row, tick);
           const staticHash = cellHash(column, row, 0);
+          const streamHash = cellHash(column + rowShift, row, 0);
           const level = luminance / 255;
-          const drift = ((hash % 1000) / 1000 - 0.5) * 20 * shimmer;
-          luminance = clamp(luminance + drift, 0, 255);
 
           let character = " ";
-          if (luminance > 22) {
-            if (luminance < 72) {
-              character = hash % 5 === 0 ? "." : " ";
-            } else if (luminance < 125) {
-              character = hash % 4 === 0 ? " " : ".·∙"[hash % 3];
+          if (luminance > 18) {
+            if (luminance < 58) {
+              character = streamHash % 3 === 0 ? "." : " ";
+            } else if (luminance < 104) {
+              character =
+                streamHash % 4 === 0 ? " " : ".·∙"[streamHash % 3];
             } else if (active.charset === "dots") {
-              character = charset[hash % charset.length];
+              character = charset[streamHash % charset.length];
+            } else if (active.charset === "signal") {
+              const tapeIndex =
+                (column + row * 19 + rowShift + SIGNAL_TAPE.length * 4) %
+                SIGNAL_TAPE.length;
+              character = SIGNAL_TAPE[tapeIndex];
+              const occupancy = 84 + level * 14;
+              if (streamHash % 100 > occupancy) {
+                character = luminance > 178 ? "." : " ";
+              }
+              if (
+                character === " " &&
+                luminance > 214 &&
+                streamHash % 3 === 0
+              ) {
+                character = ".";
+              }
             } else {
               const dotChance = Math.max(5, Math.round(33 - level * 28));
               character =
@@ -227,10 +294,30 @@ export function AsciiStudio() {
           line += character;
 
           if (character !== " ") {
-            outputContext.globalAlpha = clamp(0.16 + level * 1.08, 0.16, 1);
+            const isDot = ".·∙•".includes(character);
+            const pulseSeed = (staticHash % 1000) / 1000;
+            const pulseRate = (2.3 + pulseSeed * 3.1) * (active.motion / 72);
+            const dotPulse = isDot
+              ? 0.35 +
+                0.65 *
+                  (0.5 +
+                    0.5 *
+                      Math.sin(timeSeconds * pulseRate + pulseSeed * Math.PI * 2))
+              : 1;
+            const drawLuminance = isDot
+              ? clamp(luminance + (dotPulse - 0.68) * 60, 0, 255)
+              : luminance;
+            const drawLevel = drawLuminance / 255;
+            const baseAlpha =
+              active.palette === "ice"
+                ? clamp(0.78 + drawLevel * 0.22, 0.78, 1)
+                : clamp(0.32 + drawLevel * 0.72, 0.32, 1);
+            outputContext.globalAlpha = baseAlpha * dotPulse;
+            outputContext.shadowBlur =
+              active.palette === "ice" && drawLevel > 0.88 ? 2.4 : 0;
             outputContext.fillStyle = paletteColor(
               active.palette,
-              luminance,
+              drawLuminance,
               red,
               green,
               blue,
@@ -341,6 +428,27 @@ export function AsciiStudio() {
   }, []);
 
   useEffect(() => {
+    const image = imageRef.current;
+    if (!image) return;
+
+    const handleDemoLoad = () => {
+      if (sourceKindRef.current !== "demo") return;
+      setSourceName("Editorial portrait");
+      setSourceDimensions(`${image.naturalWidth} × ${image.naturalHeight}`);
+      setMessage("Portrait signal running");
+      renderAscii(image, image.naturalWidth, image.naturalHeight);
+    };
+
+    image.onload = handleDemoLoad;
+    image.src = "/demo-portrait.png";
+    if (image.complete && image.naturalWidth) handleDemoLoad();
+
+    return () => {
+      if (image.onload === handleDemoLoad) image.onload = null;
+    };
+  }, [renderAscii]);
+
+  useEffect(() => {
     let animationFrame = 0;
     let lastFrame = 0;
 
@@ -349,9 +457,19 @@ export function AsciiStudio() {
       if (!isPaused && time - lastFrame >= frameInterval) {
         lastFrame = time;
         if (sourceKind === "demo") {
-          drawDemo(time);
-          const demo = demoCanvasRef.current;
-          if (demo) renderAscii(demo, demo.width, demo.height, time);
+          const portrait = imageRef.current;
+          if (portrait?.complete && portrait.naturalWidth) {
+            renderAscii(
+              portrait,
+              portrait.naturalWidth,
+              portrait.naturalHeight,
+              time,
+            );
+          } else {
+            drawDemo(time);
+            const demo = demoCanvasRef.current;
+            if (demo) renderAscii(demo, demo.width, demo.height, time);
+          }
         } else if (sourceKind === "image") {
           const image = imageRef.current;
           if (image?.complete && image.naturalWidth) {
@@ -378,8 +496,10 @@ export function AsciiStudio() {
         renderAscii(image, image.naturalWidth, image.naturalHeight);
       }
     } else if (sourceKind === "demo") {
-      const demo = demoCanvasRef.current;
-      if (demo?.width) renderAscii(demo, demo.width, demo.height);
+      const portrait = imageRef.current;
+      if (portrait?.complete && portrait.naturalWidth) {
+        renderAscii(portrait, portrait.naturalWidth, portrait.naturalHeight);
+      }
     } else {
       const video = videoRef.current;
       if (video && video.readyState >= 2) {
@@ -478,11 +598,19 @@ export function AsciiStudio() {
     }
     videoRef.current?.pause();
     setSettings(INITIAL_SETTINGS);
+    sourceKindRef.current = "demo";
     setSourceKind("demo");
-    setSourceName("Procedural signal");
-    setSourceDimensions("640 × 420");
+    setSourceName("Editorial portrait");
+    const image = imageRef.current;
+    if (image) {
+      image.onload = () => {
+        setSourceDimensions(`${image.naturalWidth} × ${image.naturalHeight}`);
+        renderAscii(image, image.naturalWidth, image.naturalHeight);
+      };
+      image.src = "/demo-portrait.png";
+    }
     setIsPaused(false);
-    setMessage("Live demo running");
+    setMessage("Portrait signal running");
   };
 
   const copyAscii = async () => {
@@ -696,6 +824,22 @@ export function AsciiStudio() {
               value={settings.motion}
               onChange={(event) =>
                 updateSetting("motion", Number(event.target.value))
+              }
+            />
+          </label>
+
+          <label className="range-control">
+            <span>
+              Frame zoom <output>{(settings.zoom ?? INITIAL_SETTINGS.zoom).toFixed(2)}×</output>
+            </span>
+            <input
+              type="range"
+              min="1"
+              max="1.6"
+              step="0.01"
+              value={settings.zoom ?? INITIAL_SETTINGS.zoom}
+              onChange={(event) =>
+                updateSetting("zoom", Number(event.target.value))
               }
             />
           </label>
